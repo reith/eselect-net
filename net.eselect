@@ -1,0 +1,242 @@
+# -*-eselect-*-  vim: ft=eselect
+# Copyright 2016 Ameretat Reith
+# Distributed under the terms of the GNU General Public License v2
+
+DESCRIPTION="Manage openrc networking service configuration"
+MAINTAINER="ameretat.reith@gmail.com"
+VERSION="0.0.1"
+
+E_PATH="${EROOT%/}/etc/eselect/net"
+E_CONF="$E_PATH/conf.d"
+E_DEVS="$E_PATH/devs"
+E_CONFDB="$E_PATH/db"
+
+inherit config
+
+find_configurations() {
+	find /etc/eselect/net/conf.d -type f -printf '%P\n'
+}
+
+checksum() {
+	[[ -r $1 ]] || die "Cannot access file $1"
+	md5sum $1 | cut -f1 -d' '
+}
+
+file_ifacename() {
+	local iface=$(basename $1)
+	echo "${iface#net\.}"
+}
+
+interface_config_file() {
+	[[ -z $1 ]] && die "no interface provided"
+
+	local devname=${1#net\.}
+	local devrc="net.$devname"
+	local devconf="$EROOT/etc/conf.d/$devrc"
+
+	[[ ! -e $EROOT/etc/init.d/$devrc ]] && die "open-rc service $devrc does not exist"
+
+	if [[ -L $devconf ]]; then
+		if [[ $(dirname $(canonicalise $devconf) ) != $E_DEVS ]]; then
+			echo "external_link"
+
+		else
+			echo "known,$(load_config $E_CONFDB conf_$devname)"
+		fi
+
+	elif [[ -e $devconf ]]; then
+		echo "external"
+
+	else
+		echo "not_exist"
+	fi
+}
+
+### show action ###
+
+describe_show() {
+	echo "Show current interface configurations"
+}
+
+describe_show_parameters() {
+	echo "[interface]"
+}
+
+do_show() {
+	if [[ -z "${@}" ]]; then
+		show_current_configs
+
+	elif [[ -z "$2" ]]; then
+		show_interface_config "$1" --brief
+
+	else
+		die -q "Too many parameters"
+	fi
+
+}
+
+show_current_configs() {
+	local iface
+	write_list_start "Network devices configurations:"
+
+	for f in ${EROOR}/etc/init.d/net.*; do
+		iface=$(basename $f)
+		show_interface_config ${iface#net\.}
+	done
+}
+
+
+show_interface_config() {
+	local iface_conf iface brief msg
+
+	iface=$1
+	[[ $2 == "--brief" ]] && brief=1
+
+	iface_conf=$(interface_config_file $iface)
+	case $iface_conf in
+		not_exist)
+			msg="not configured";;
+		external*)
+			msg="not configured by eselect";;
+		known,*)
+			msg="${iface_conf#known,}";;
+		*)
+			die "unknown interface_conf $iface_conf"
+	esac
+
+	[[ -n $brief ]] && echo "$msg" || write_kv_list_entry $iface "$msg"
+}
+
+### list action ###
+
+describe_list() {
+	echo "List available configrations"
+}
+
+do_list() {
+	[[ -z "${@}" ]] || die -q "Too many parameters"
+
+	local i targets
+	targets=( $(find_configurations) )
+	for (( i = 0; i < ${#targets[@]}; i++ )); do
+		[[ ${targets[i]} = \
+			$(basename "$(canonicalise "${EROOT}/etc/eselect/net/conf.d")") ]] \
+			&& targets[i]=$(highlight_marker "${targets[i]}")
+	done
+	write_list_start "Available network configurations:"
+	write_numbered_list -m "(none found)" "${targets[@]}"
+}
+
+### set action ###
+
+describe_set() {
+	echo "Configure an interface to saved configuration"
+}
+
+describe_set_parameters() {
+	echo "<interface>"
+}
+
+do_set() {
+	if [[ -z "${1}" ]]; then
+		die -q "No interface provided"
+
+	elif [[ -z "${2}" ]]; then
+		die -q "No configuration provided"
+
+	elif [[ -n "${3}" ]]; then
+		die -q "Too many parameters"
+
+	elif [[ ! -e "${EROOT}/etc/init.d/net.${1}" ]] ; then
+		die -q "There is no service for interface $1"
+	fi
+
+	local configs=( $(find_configurations) )
+	local config_file config devconf
+
+	[[ -n $config ]] && die -q "Invalid config $2"
+
+	if is_number $2; then
+		[[ $2 -ge 1 && $2 -le ${#configs[@]} ]] || die -q "Invalid number $2"
+
+		config=${configs[$2-1]}
+		[[ -z $config ]] && die -q "Invalid config choise $2"
+	else
+		config="$2"
+	fi
+
+	config_file="${E_CONF}/$config"
+
+	if [[ ! -e $config_file ]]; then
+		die -q "Configuration file does not exist"
+	fi
+
+	devconf=${EROOT}/etc/conf.d/net.${1}
+	if [[ -e $devconf ]]; then
+
+		if [[ ! -L $devconf ||
+			  $(dirname $(canonicalise $devconf) ) != $E_DEVS ]]; then
+			die -q "Configuration file for interface $1 exists but" \
+			       "It's not created by eselect-net.  Refuse to this anything."
+		fi
+	fi
+
+	sed -e "s#^\(.*\)_iface_\(.*\)=#\1$1\2=#g" $config_file >"$E_DEVS/net.$1"
+	ln -sf "$E_DEVS/net.$1" $devconf
+	store_config $E_CONFDB conf_$1 $config
+	store_config $E_CONFDB checksum_$1 $(checksum $config_file)
+}
+
+
+### check action ###
+
+describe_check() {
+	echo "Check for interfaces using outdated configurations"
+}
+
+do_check() {
+	[[ -z "${@}" ]] || die -q "Too many parameters"
+
+	write_list_start "Network configurations status:"
+
+	local devconf devname mainconf iface confchecksum savedchecksum
+
+	for devconf in $E_DEVS/net.*; do
+		iface=$(file_ifacename $devconf)
+		mainconf=$(load_config $E_CONFDB conf_$iface)
+		savedchecksum=$(load_config $E_CONFDB checksum_$iface)
+		if [[ -z $mainconf ]]; then
+			die "Configuration template for $iface is not known"
+
+		elif [[ -z $savedchecksum ]]; then
+			die "Checksum of saved template for $iface is not known"
+		fi
+
+		confchecksum=$(checksum $E_CONF/$mainconf)
+		if [[ $confchecksum == $savedchecksum ]]; then
+			write_kv_list_entry "$iface" "ok"
+		else
+			write_kv_list_entry "$iface" "outdated"
+		fi
+	done
+}
+
+### update action ###
+
+describe_update() {
+	echo "Update interface configuration"
+}
+
+describe_update_parameters() {
+	echo "<interface>"
+}
+
+do_update() {
+	local config
+
+	if [[ -z $1 ]]; then
+		die -q "No interface provided"
+	fi
+
+	do_set $1 $(show_interface_config $1 --brief)
+}
