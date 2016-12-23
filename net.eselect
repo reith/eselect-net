@@ -28,7 +28,7 @@ file_ifacename() {
 }
 
 interface_config_file() {
-	[[ -z $1 ]] && die "no interface provided"
+	[[ -z "$1" ]] && die "no interface provided"
 
 	local devname=${1#net\.}
 	local devrc="net.$devname"
@@ -50,6 +50,14 @@ interface_config_file() {
 	else
 		echo "not_exist"
 	fi
+}
+
+delete_config() {
+	[[ -z "$1" ]] && die "No DB file provided"
+
+	[[ -z "$2" ]] && die "No key provided"
+
+	sed -i -e "/^$2=/d" $1
 }
 
 ### show action ###
@@ -138,9 +146,9 @@ describe_make_parameters() {
 }
 
 do_make() {
-	[[ -z $1 ]] && die -q "No name provided"
+	[[ -z "$1" ]] && die -q "No name provided"
 
-	[[ -n $2 ]] && die -q "Too many parameters"
+	[[ -n "$2" ]] && die -q "Too many parameters"
 
 	[[ -e $E_CONF/$1 ]] && die -q "$E_CONF/$1 already exists"
 
@@ -204,7 +212,7 @@ do_set() {
 		if [[ ! -L $devconf ||
 			  $(dirname $(canonicalise $devconf) ) != $E_DEVS ]]; then
 			die -q "Configuration file for interface $1 exists but" \
-			       "It's not created by eselect-net.  Refuse to this anything."
+			       "It's not created by eselect-net.  Refused to do anything."
 		fi
 	fi
 
@@ -214,6 +222,37 @@ do_set() {
 	store_config $E_CONFDB checksum_$1 $(checksum $config_file)
 }
 
+### unset action ###
+
+describe_unset() {
+	echo "Remove configuration link"
+}
+
+describe_unset_parameters() {
+	echo "<interface>"
+}
+
+do_unset() {
+	[[ -z "${1}" ]] && die -q "No interface provided"
+
+	[[ -n "${2}" ]] && die -q "Too many parameters"
+
+	local devconf=${EROOT}/etc/conf.d/net.$1
+
+	if [[ -L $devconf &&
+		  $(dirname $(canonicalise $devconf) ) == $E_DEVS ]]; then
+		rm -vf $(canonicalise $devconf)
+		rm -v $devconf
+		delete_config $E_CONFDB conf_$1
+		delete_config $E_CONFDB checksum_$1
+
+	elif [[ -e $devconf ]]; then
+		die -q "$1 is not configured by eselect.  Refused to do anything."
+
+	else
+		die -q "$1 is not configured."
+	fi
+}
 
 ### check action ###
 
@@ -261,7 +300,7 @@ describe_update_parameters() {
 do_update() {
 	local config
 
-	if [[ -z $1 ]]; then
+	if [[ -z "$1" ]]; then
 		die -q "No interface provided"
 	fi
 
