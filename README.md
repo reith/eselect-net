@@ -80,3 +80,7 @@ and which one is not:
 To apply latest `dhcpcd-eth0` change to `eth0` configuration, use *update*:
 
 	root # eselect net update eth1
+
+To make `eth0` don't use `dhcpcd-eth0`, use *unset* command:
+
+	root # eselect net unset eth0
