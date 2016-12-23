@@ -127,6 +127,33 @@ do_list() {
 	write_numbered_list -m "(none found)" "${targets[@]}"
 }
 
+### make action ###
+
+describe_make() {
+	echo "Make new configuration profile"
+}
+
+describe_make_parameters() {
+	echo "<name>"
+}
+
+do_make() {
+	[[ -z $1 ]] && die -q "No name provided"
+
+	[[ -n $2 ]] && die -q "Too many parameters"
+
+	[[ -e $E_CONF/$1 ]] && die -q "$E_CONF/$1 already exists"
+
+	cat >$E_CONF/$1 <<EOF
+# -*- gentoo-conf-d -*- vim: ft=gentoo-conf-d
+#
+# This is a netifrc network configuration.  It will be processed to make config
+# file.  _iface_ in labels is a placeholder for interface, so modules__iface_
+# will be modules_eth0 in produced config file.
+
+EOF
+}
+
 ### set action ###
 
 describe_set() {
