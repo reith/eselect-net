@@ -7,13 +7,13 @@ VERSION="0.1.0"
 
 E_PATH="${EROOT%/}/etc/eselect/net"
 E_CONF="$E_PATH/conf.d"
-E_DEVS="$E_PATH/devs"
+E_DEVS=$(canonicalise "$E_PATH/devs")
 E_CONFDB="$E_PATH/db"
 
 inherit config
 
 find_configurations() {
-	find /etc/eselect/net/conf.d -type f -printf '%P\n'
+	find -L "$E_CONF" -type f -printf '%P\n'
 }
 
 checksum() {
