@@ -18,11 +18,11 @@ find_configurations() {
 
 checksum() {
 	[[ -r $1 ]] || die "Cannot access file $1"
-	md5sum $1 | cut -f1 -d' '
+	md5sum -- "$1" | cut -f1 -d' '
 }
 
 file_ifacename() {
-	local iface=$(basename $1)
+	local iface=$(basename "$1")
 	echo "${iface#net\.}"
 }
 
@@ -36,11 +36,11 @@ interface_config_file() {
 	[[ ! -e $EROOT/etc/init.d/$devrc ]] && die "open-rc service $devrc does not exist"
 
 	if [[ -L $devconf ]]; then
-		if [[ $(dirname $(canonicalise $devconf) ) != $E_DEVS ]]; then
+		if [[ $(dirname "$(canonicalise "$devconf")" ) != $E_DEVS ]]; then
 			echo "external_link"
 
 		else
-			echo "known,$(load_config $E_CONFDB conf_$devname)"
+			echo "known,$(load_config "$E_CONFDB" "conf_$devname")"
 		fi
 
 	elif [[ -e $devconf ]]; then
@@ -86,8 +86,8 @@ show_current_configs() {
 	local iface
 	write_list_start "Network devices configurations:"
 
-	for f in ${EROOT}/etc/init.d/net.*; do
-		iface=$(basename $f)
+	for f in "${EROOT}"/etc/init.d/net.*; do
+		iface=$(basename "$f")
 		show_interface_config ${iface#net\.}
 	done
 }
@@ -151,7 +151,7 @@ do_make() {
 
 	[[ -e $E_CONF/$1 ]] && die -q "$E_CONF/$1 already exists"
 
-	cat >$E_CONF/$1 <<EOF
+	cat >"$E_CONF/$1" <<EOF
 # -*- gentoo-conf-d -*- vim: ft=gentoo-conf-d
 #
 # This is a netifrc network configuration.  It will be processed to make config
@@ -208,17 +208,17 @@ do_set() {
 	devconf=${EROOT}/etc/conf.d/net.${1}
 	if [[ -e $devconf ]]; then
 
-		if [[ ! -L $devconf ||
-			  $(dirname $(canonicalise $devconf) ) != $E_DEVS ]]; then
+		if [[ ! -L $devconf || \
+			  $(dirname "$(canonicalise "$devconf")" ) != $E_DEVS ]]; then
 			die -q "Configuration file for interface $1 exists but" \
 			       "It's not created by eselect-net.  Refused to do anything."
 		fi
 	fi
 
-	sed -e "s#^\(.*\)_iface_\(.*\)=#\1$1\2=#g" $config_file >"$E_DEVS/net.$1"
-	ln -sf "$E_DEVS/net.$1" $devconf
-	store_config $E_CONFDB conf_$1 $config
-	store_config $E_CONFDB checksum_$1 $(checksum $config_file)
+	sed -e "s#^\(.*\)_iface_\(.*\)=#\1$1\2=#g" -- "$config_file" >"$E_DEVS/net.$1"
+	ln -sf -- "$E_DEVS/net.$1" "$devconf"
+	store_config "$E_CONFDB" "conf_$1" "$config"
+	store_config "$E_CONFDB" "checksum_$1" "$(checksum "$config_file")"
 }
 
 ### unset action ###
@@ -239,11 +239,11 @@ do_unset() {
 	local devconf=${EROOT}/etc/conf.d/net.$1
 
 	if [[ -L $devconf &&
-		  $(dirname $(canonicalise $devconf) ) == $E_DEVS ]]; then
-		rm -vf $(canonicalise $devconf)
-		rm -v $devconf
-		delete_config $E_CONFDB conf_$1
-		delete_config $E_CONFDB checksum_$1
+		  $(dirname "$(canonicalise "$devconf")" ) == $E_DEVS ]]; then
+		rm -vf -- "$(canonicalise $devconf)"
+		rm -v -- "$devconf"
+		delete_config "$E_CONFDB" "conf_$1"
+		delete_config "$E_CONFDB" "checksum_$1"
 
 	elif [[ -e $devconf ]]; then
 		die -q "$1 is not configured by eselect.  Refused to do anything."
@@ -260,16 +260,16 @@ describe_check() {
 }
 
 do_check() {
-	[[ -z "${@}" ]] || die -q "Too many parameters"
+	[[ $# -eq 0 ]] || die -q "Too many parameters"
 
 	write_list_start "Network configurations status:"
 
 	local devconf devname mainconf iface confchecksum savedchecksum
 
-	for devconf in $E_DEVS/net.*; do
-		iface=$(file_ifacename $devconf)
-		mainconf=$(load_config $E_CONFDB conf_$iface)
-		savedchecksum=$(load_config $E_CONFDB checksum_$iface)
+	for devconf in "$E_DEVS"/net.*; do
+		iface=$(file_ifacename "$devconf")
+		mainconf=$(load_config "$E_CONFDB" "conf_$iface")
+		savedchecksum=$(load_config "$E_CONFDB" "checksum_$iface")
 		if [[ -z $mainconf ]]; then
 			die "Configuration template for $iface is not known"
 
@@ -277,7 +277,7 @@ do_check() {
 			die "Checksum of saved template for $iface is not known"
 		fi
 
-		confchecksum=$(checksum $E_CONF/$mainconf)
+		confchecksum=$(checksum "$E_CONF/$mainconf")
 		if [[ $confchecksum == $savedchecksum ]]; then
 			write_kv_list_entry "$iface" "ok"
 		else
@@ -303,5 +303,5 @@ do_update() {
 		die -q "No interface provided"
 	fi
 
-	do_set $1 $(show_interface_config $1 --brief)
+	do_set "$1" $(show_interface_config "$1" --brief)
 }
