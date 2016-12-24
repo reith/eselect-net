@@ -70,10 +70,10 @@ describe_show_parameters() {
 }
 
 do_show() {
-	if [[ -z "${@}" ]]; then
+	if [[ $# -eq 0 ]]; then
 		show_current_configs
 
-	elif [[ -z "$2" ]]; then
+	elif [[ $# -eq 1 ]]; then
 		show_interface_config "$1" --brief
 
 	else
