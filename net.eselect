@@ -27,7 +27,7 @@ file_ifacename() {
 }
 
 interface_config_file() {
-	[[ -z "$1" ]] && die "no interface provided"
+	[[ $# -lt 1 ]] && die "no interface provided"
 
 	local devname=${1#net\.}
 	local devrc="net.$devname"
@@ -52,9 +52,9 @@ interface_config_file() {
 }
 
 delete_config() {
-	[[ -z "$1" ]] && die "No DB file provided"
+	[[ $# -lt 1 ]] && die "No DB file provided"
 
-	[[ -z "$2" ]] && die "No key provided"
+	[[ $# -lt 2 ]] && die "No key provided"
 
 	sed -i -e "/^$2=/d" $1
 }
@@ -232,9 +232,9 @@ describe_unset_parameters() {
 }
 
 do_unset() {
-	[[ -z "${1}" ]] && die -q "No interface provided"
+	[[ $# -lt 1 ]] && die -q "No interface provided"
 
-	[[ -n "${2}" ]] && die -q "Too many parameters"
+	[[ $# -gt 1 ]] && die -q "Too many parameters"
 
 	local devconf=${EROOT}/etc/conf.d/net.$1
 
@@ -299,7 +299,7 @@ describe_update_parameters() {
 do_update() {
 	local config
 
-	if [[ -z "$1" ]]; then
+	if [[ $# -lt 1 ]]; then
 		die -q "No interface provided"
 	fi
 
