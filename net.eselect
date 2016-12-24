@@ -86,7 +86,7 @@ show_current_configs() {
 	local iface
 	write_list_start "Network devices configurations:"
 
-	for f in ${EROOR}/etc/init.d/net.*; do
+	for f in ${EROOT}/etc/init.d/net.*; do
 		iface=$(basename $f)
 		show_interface_config ${iface#net\.}
 	done
