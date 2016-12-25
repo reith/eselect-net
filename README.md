@@ -91,8 +91,6 @@ Installation
 
 There is _eselect-net_ package in [mv overlay](https://cgit.gentoo.org/user/mv.git) made and maintained by Martin Väth.
 
-Also you can manually install it by dropping `net.eselect` file into
-`/usr/share/eselect/modules` and creating these directories:
+Also you can install it manually by make:
 
-	/etc/eselect/net/devs
-	/etc/eselect/net/conf.d
+	make prefix=/usr
