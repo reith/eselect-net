@@ -93,4 +93,4 @@ There is _eselect-net_ package in [mv overlay](https://cgit.gentoo.org/user/mv.g
 
 Also you can install it manually by make:
 
-	make prefix=/usr
+	make prefix=/usr install
