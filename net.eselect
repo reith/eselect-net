@@ -66,7 +66,7 @@ describe_show() {
 }
 
 describe_show_parameters() {
-	echo "[interface]"
+	echo "[iface]"
 }
 
 do_show() {
@@ -168,7 +168,7 @@ describe_set() {
 }
 
 describe_set_parameters() {
-	echo "<interface>"
+	echo "<iface> <config>"
 }
 
 do_set() {
@@ -228,7 +228,7 @@ describe_unset() {
 }
 
 describe_unset_parameters() {
-	echo "<interface>"
+	echo "<iface>"
 }
 
 do_unset() {
@@ -293,7 +293,7 @@ describe_update() {
 }
 
 describe_update_parameters() {
-	echo "<interface>"
+	echo "<iface>"
 }
 
 do_update() {
