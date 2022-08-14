@@ -84,3 +84,13 @@ To apply latest `dhcpcd-eth0` change to `eth0` configuration, use *update*:
 To make `eth0` don't use `dhcpcd-eth0`, use *unset* command:
 
 	root # eselect net unset eth0
+
+
+Installation
+------------
+
+There is _eselect-net_ package in [mv overlay](https://cgit.gentoo.org/user/mv.git) made and maintained by Martin Väth.
+
+Also you can install it manually by make:
+
+	make prefix=/usr install
